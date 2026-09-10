@@ -2,58 +2,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Default deny
+    // Default deny for unlisted documents
     match /{document=**} {
       allow read, write: if false;
     }
 
     // Maintenance Tasks collection
     match /maintenanceTasks/{taskId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(taskId);
+      allow read, write: if isValidId(taskId);
     }
 
     // Trains timetable collection
     match /trains/{trainId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(trainId);
+      allow read, write: if isValidId(trainId);
     }
 
     // Block Windows collection
     match /blockWindows/{blockId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(blockId);
+      allow read, write: if isValidId(blockId);
     }
 
     // Block Plans collection
     match /blockPlans/{planId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(planId);
+      allow read, write: if isValidId(planId);
     }
 
     // Railway Assets collection
     match /assets/{assetId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(assetId);
+      allow read, write: if isValidId(assetId);
     }
 
     // AI Recommendations collection
     match /aiRecommendations/{recommendationId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(recommendationId);
+      allow read, write: if isValidId(recommendationId);
     }
 
-    // Test connection endpoint as required by Firebase skill
+    // Test connection endpoint
     match /test/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
   }
 }
