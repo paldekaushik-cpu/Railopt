@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Maintenance Tasks collection
+    match /maintenanceTasks/{taskId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(taskId);
+    }
+
+    // Trains timetable collection
+    match /trains/{trainId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(trainId);
+    }
+
+    // Block Windows collection
+    match /blockWindows/{blockId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(blockId);
+    }
+
+    // Block Plans collection
+    match /blockPlans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(planId);
+    }
+
+    // Railway Assets collection
+    match /assets/{assetId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(assetId);
+    }
+
+    // AI Recommendations collection
+    match /aiRecommendations/{recommendationId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(recommendationId);
+    }
+
+    // Test connection endpoint as required by Firebase skill
+    match /test/{docId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

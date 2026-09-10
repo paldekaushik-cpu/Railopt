@@ -1,0 +1,6 @@
+{
+  "name": "RailOpt AI",
+  "description": "AI-Powered Automatic Block Planning to Maximize Asset Availability for Train Operations on Indian Railways.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

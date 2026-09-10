@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "MaintenanceTask": {
+      "title": "MaintenanceTask",
+      "description": "Railway maintenance activity from Engineering, S&T, or TRD",
+      "type": "object",
+      "properties": {
+        "taskId": { "type": "string", "maxLength": 64 },
+        "department": { "type": "string", "enum": ["Engineering", "S&T", "TRD"] },
+        "assetId": { "type": "string", "maxLength": 64 },
+        "assetType": { "type": "string", "maxLength": 64 },
+        "section": { "type": "string", "maxLength": 32 },
+        "taskDescription": { "type": "string", "maxLength": 256 },
+        "dueDate": { "type": "string", "maxLength": 32 },
+        "duration": { "type": "number" },
+        "criticality": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "urgency": { "type": "number" },
+        "safetyRisk": { "type": "number" },
+        "assetCondition": { "type": "string", "maxLength": 32 },
+        "daysOverdue": { "type": "number" },
+        "operationalImpact": { "type": "number" },
+        "riskScore": { "type": "number" },
+        "priority": { "type": "string", "enum": ["Critical", "High", "Medium", "Low"] },
+        "priorityExplanation": { "type": "string", "maxLength": 512 },
+        "status": { "type": "string", "enum": ["Pending", "Bundled", "Scheduled", "Completed"] },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["taskId", "department", "assetId", "section", "taskDescription", "duration", "status"]
+    },
+    "Train": {
+      "title": "Train",
+      "description": "Timetabled train movement through railway sections",
+      "type": "object",
+      "properties": {
+        "trainId": { "type": "string", "maxLength": 32 },
+        "trainName": { "type": "string", "maxLength": 128 },
+        "trainType": { "type": "string", "enum": ["Express", "Passenger", "Goods", "Local"] },
+        "section": { "type": "string", "maxLength": 32 },
+        "arrivalTime": { "type": "string", "maxLength": 16 },
+        "departureTime": { "type": "string", "maxLength": 16 },
+        "priority": { "type": "number" }
+      },
+      "required": ["trainId", "trainName", "trainType", "section", "arrivalTime", "departureTime", "priority"]
+    },
+    "BlockWindow": {
+      "title": "BlockWindow",
+      "description": "Available corridor maintenance window",
+      "type": "object",
+      "properties": {
+        "blockId": { "type": "string", "maxLength": 64 },
+        "section": { "type": "string", "maxLength": 32 },
+        "date": { "type": "string", "maxLength": 32 },
+        "startTime": { "type": "string", "maxLength": 16 },
+        "endTime": { "type": "string", "maxLength": 16 },
+        "available": { "type": "boolean" },
+        "maximumDuration": { "type": "number" }
+      },
+      "required": ["blockId", "section", "startTime", "endTime", "available", "maximumDuration"]
+    },
+    "BlockPlan": {
+      "title": "BlockPlan",
+      "description": "Optimized railway maintenance block schedule",
+      "type": "object",
+      "properties": {
+        "planId": { "type": "string", "maxLength": 64 },
+        "section": { "type": "string", "maxLength": 32 },
+        "date": { "type": "string", "maxLength": 32 },
+        "startTime": { "type": "string", "maxLength": 16 },
+        "endTime": { "type": "string", "maxLength": 16 },
+        "taskIds": { "type": "array" },
+        "departments": { "type": "array" },
+        "trainConflicts": { "type": "number" },
+        "utilization": { "type": "number" },
+        "assetAvailabilityImpact": { "type": "number" },
+        "status": { "type": "string", "enum": ["Recommended", "Scheduled", "In Progress", "Completed", "Rejected"] },
+        "generatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["planId", "section", "startTime", "endTime", "status"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "Track, signaling, or electrical railway asset",
+      "type": "object",
+      "properties": {
+        "assetId": { "type": "string", "maxLength": 64 },
+        "assetType": { "type": "string", "maxLength": 64 },
+        "department": { "type": "string", "enum": ["Engineering", "S&T", "TRD"] },
+        "section": { "type": "string", "maxLength": 32 },
+        "condition": { "type": "string", "maxLength": 32 },
+        "criticality": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "lastMaintenance": { "type": "string", "maxLength": 32 },
+        "nextMaintenance": { "type": "string", "maxLength": 32 }
+      },
+      "required": ["assetId", "assetType", "department", "section", "condition", "criticality"]
+    },
+    "AiRecommendation": {
+      "title": "AiRecommendation",
+      "description": "AI-generated block scheduling recommendation",
+      "type": "object",
+      "properties": {
+        "recommendationId": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "maxLength": 32 },
+        "section": { "type": "string", "maxLength": 32 },
+        "taskIds": { "type": "array" },
+        "recommendedTime": { "type": "string", "maxLength": 32 },
+        "reason": { "type": "string", "maxLength": 512 },
+        "impact": { "type": "string", "maxLength": 256 },
+        "status": { "type": "string", "enum": ["Pending", "Applied", "Dismissed"] }
+      },
+      "required": ["recommendationId", "type", "section", "reason", "impact", "status"]
+    }
+  },
+  "firestore": {
+    "/maintenanceTasks/{taskId}": {
+      "schema": "MaintenanceTask",
+      "description": "Railway department maintenance tasks and priorities"
+    },
+    "/trains/{trainId}": {
+      "schema": "Train",
+      "description": "Train schedules across corridor sections"
+    },
+    "/blockWindows/{blockId}": {
+      "schema": "BlockWindow",
+      "description": "Corridor maintenance slots"
+    },
+    "/blockPlans/{planId}": {
+      "schema": "BlockPlan",
+      "description": "Optimized block plans and multi-department bundles"
+    },
+    "/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Railway infrastructure assets and current status"
+    },
+    "/aiRecommendations/{recommendationId}": {
+      "schema": "AiRecommendation",
+      "description": "Explainable AI optimization recommendations"
+    }
+  }
+}
