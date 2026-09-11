@@ -8,9 +8,25 @@ export type AssetCondition = 'Good' | 'Fair' | 'Poor' | 'Critical';
 
 export type TrainType = 'Express' | 'Passenger' | 'Goods' | 'Local';
 
-export type BlockPlanStatus = 'Recommended' | 'Scheduled' | 'In Progress' | 'Completed' | 'Rejected';
+export type BlockPlanStatus =
+  | 'AI RECOMMENDED'
+  | 'APPROVED'
+  | 'MODIFIED'
+  | 'REJECTED'
+  | 'Recommended'
+  | 'Scheduled'
+  | 'In Progress'
+  | 'Completed';
 
 export type RecommendationType = 'Bundle' | 'Priority' | 'Reschedule' | 'Preemptive';
+
+export interface PriorityWeights {
+  criticalityWeight: number; // default 30
+  severityWeight: number;    // default 25
+  urgencyWeight: number;     // default 20
+  overdueWeight: number;     // default 15
+  assetImpactWeight: number; // default 10
+}
 
 export interface MaintenanceTask {
   id?: string;
@@ -23,17 +39,20 @@ export interface MaintenanceTask {
   dueDate: string;
   duration: number; // in hours
   criticality: PriorityLevel;
+  severity?: PriorityLevel; // PRD column: Severity
   urgency: number; // 1-10
   safetyRisk: number; // 1-10
   assetCondition: AssetCondition;
   daysOverdue: number;
   operationalImpact: number; // 1-10
-  riskScore: number; // 0-100
+  riskScore: number; // 0-100 calculated by Priority Engine
   priority: PriorityLevel;
   priorityExplanation?: string;
   status: TaskStatus;
   createdAt?: string;
   assignedBlockId?: string;
+  recommendedBlockId?: string;
+  dueStatus?: string;
 }
 
 export interface Train {
@@ -74,6 +93,16 @@ export interface BlockPlan {
   assetAvailabilityImpact: number; // percentage, e.g. 96.4
   status: BlockPlanStatus;
   generatedAt: string;
+  approvedBy?: string;
+  approvalTimestamp?: string;
+  rejectionReason?: string;
+  modificationNotes?: string;
+  whyThisPlan?: {
+    priorityRationale: string;
+    windowRationale: string;
+    compatibleBundlingRationale: string;
+    conflictCheckRationale: string;
+  };
   bundlingDetails?: {
     compatibleCount: number;
     explanation: string;
@@ -91,6 +120,9 @@ export interface Asset {
   criticality: PriorityLevel;
   lastMaintenance: string;
   nextMaintenance: string;
+  lat?: number;
+  lng?: number;
+  locationName?: string;
 }
 
 export interface AiRecommendation {
@@ -120,6 +152,8 @@ export interface CorridorSection {
   activeBlocksCount: number;
   nextBlockWindow: string;
   speedRestriction?: string;
+  startStation?: { name: string; lat: number; lng: number };
+  endStation?: { name: string; lat: number; lng: number };
 }
 
 export interface SimulationResult {

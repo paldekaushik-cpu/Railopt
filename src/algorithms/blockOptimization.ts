@@ -142,6 +142,22 @@ export function generateOptimalBlockPlan(
 
     const planId = `BP-${bundle.section}-${Math.floor(100 + Math.random() * 900)}`;
 
+    // Generate PRD Section 13 "Why this plan?" 4-pillar explanation
+    const topPriorityTasks = bundle.tasks.filter(t => t.priority === 'Critical' || t.priority === 'High');
+    const priorityRationale = topPriorityTasks.length > 0
+      ? `Contains ${topPriorityTasks.length} high/critical priority task(s) with risk scores up to ${Math.max(...bundle.tasks.map(t => t.riskScore))}/100 requiring urgent corridor resolution.`
+      : `Bundles routine preventive maintenance for ${bundle.tasks.length} assets to prevent backlog accumulation.`;
+
+    const windowRationale = `Slot ${finalStart}–${finalEnd} aligns with off-peak corridor headway, minimizing line occupancy disruption to timetable train paths.`;
+
+    const compatibleBundlingRationale = bundle.departments.length >= 2
+      ? `Cross-department coordination: ${bundle.departments.join(' + ')} activities co-exist safely during concurrent track and 25kV OHE power disconnection, saving ${bundle.hoursSaved} hrs.`
+      : `Single department maintenance streamlined to fit within standard allocated duration.`;
+
+    const conflictCheckRationale = finalConflicts === 0
+      ? 'Constraint check passed: 0 train timetable overlaps. Premium express trains (Rajdhani/Vande Bharat) clear of block window.'
+      : `Potential overlap with ${finalConflicts} service(s) flagged for controller loop regulation or speed restriction.`;
+
     const plan: BlockPlan = {
       planId,
       section: bundle.section,
@@ -154,8 +170,14 @@ export function generateOptimalBlockPlan(
       conflictingTrainDetails: finalConflictDetails,
       utilization: bundle.utilizationPercentage,
       assetAvailabilityImpact: assetAvailability,
-      status: 'Recommended' as BlockPlanStatus,
+      status: 'AI RECOMMENDED' as BlockPlanStatus,
       generatedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      whyThisPlan: {
+        priorityRationale,
+        windowRationale,
+        compatibleBundlingRationale,
+        conflictCheckRationale
+      },
       bundlingDetails: {
         compatibleCount: bundle.tasks.length,
         explanation: bundle.explanation,

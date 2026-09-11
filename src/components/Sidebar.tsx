@@ -6,6 +6,7 @@ import {
   Sliders,
   CalendarDays,
   BarChart3,
+  MapPin,
   GitMerge,
   Layers,
   Info
@@ -15,6 +16,7 @@ export type ActiveTab =
   | 'dashboard'
   | 'tasks'
   | 'planner'
+  | 'map'
   | 'recommendations'
   | 'simulation'
   | 'calendar'
@@ -32,6 +34,7 @@ export function Sidebar({ activeTab, onTabChange, pendingCount = 0, recommendati
     { id: 'dashboard' as ActiveTab, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'tasks' as ActiveTab, label: 'Maintenance Tasks', icon: CheckSquare, badge: pendingCount },
     { id: 'planner' as ActiveTab, label: 'Block Planner', icon: CalendarRange, highlight: true },
+    { id: 'map' as ActiveTab, label: 'Corridor Map (OSM)', icon: MapPin },
     { id: 'recommendations' as ActiveTab, label: 'AI Recommendations', icon: Lightbulb, badge: recommendationsCount },
     { id: 'simulation' as ActiveTab, label: 'What-If Simulation', icon: Sliders },
     { id: 'calendar' as ActiveTab, label: 'Weekly & Monthly Plan', icon: CalendarDays },

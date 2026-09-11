@@ -1,72 +1,139 @@
-import { MaintenanceTask, PriorityLevel } from '../types';
+import { MaintenanceTask, PriorityLevel, PriorityWeights } from '../types';
+
+export const DEFAULT_PRIORITY_WEIGHTS: PriorityWeights = {
+  criticalityWeight: 30,
+  severityWeight: 25,
+  urgencyWeight: 20,
+  overdueWeight: 15,
+  assetImpactWeight: 10
+};
 
 export interface PriorityCalculationResult {
   riskScore: number;
   priority: PriorityLevel;
   explanation: string;
+  formulaBreakdown: {
+    criticalityContribution: number;
+    severityContribution: number;
+    urgencyContribution: number;
+    overdueContribution: number;
+    assetImpactContribution: number;
+    total: number;
+  };
 }
 
-export function calculateTaskPriority(task: Partial<MaintenanceTask>): PriorityCalculationResult {
-  const criticalityWeight = {
-    'Critical': 30,
-    'High': 22,
-    'Medium': 14,
-    'Low': 6
-  }[task.criticality || 'Medium'] || 14;
+/**
+ * PRD Section 8 - Priority Engine
+ * Priority Score = Criticality×30 + Severity×25 + Urgency×20 + Overdue×15 + Asset Impact×10
+ * Categories: 90–100 Critical; 70–89 High; 40–69 Medium; 0–39 Low.
+ * Configurable weights support.
+ */
+export function calculateTaskPriority(
+  task: Partial<MaintenanceTask>,
+  customWeights?: Partial<PriorityWeights>
+): PriorityCalculationResult {
+  const weights: PriorityWeights = {
+    ...DEFAULT_PRIORITY_WEIGHTS,
+    ...customWeights
+  };
 
-  const safetyRiskScore = Math.min(Math.max(task.safetyRisk || 5, 1), 10) * 2.2; // up to 22 pts
-  const urgencyScore = Math.min(Math.max(task.urgency || 5, 1), 10) * 1.5; // up to 15 pts
-  const operationalScore = Math.min(Math.max(task.operationalImpact || 5, 1), 10) * 1.3; // up to 13 pts
+  // 1. Criticality factor (0.0 to 1.0)
+  const critMap: Record<PriorityLevel, number> = {
+    Critical: 1.0,
+    High: 0.75,
+    Medium: 0.45,
+    Low: 0.15
+  };
+  const critNormalized = critMap[task.criticality || 'Medium'] ?? 0.45;
 
-  const overdue = Math.max(task.daysOverdue || 0, 0);
-  const overdueScore = Math.min(overdue * 2.5, 12); // up to 12 pts
+  // 2. Severity factor (0.0 to 1.0)
+  const sevMap: Record<PriorityLevel, number> = {
+    Critical: 1.0,
+    High: 0.75,
+    Medium: 0.45,
+    Low: 0.15
+  };
+  const effectiveSeverity = task.severity || task.criticality || 'Medium';
+  const sevNormalized = sevMap[effectiveSeverity] ?? 0.45;
 
-  const conditionScore = {
-    'Critical': 8,
-    'Poor': 6,
-    'Fair': 4,
-    'Good': 1
-  }[task.assetCondition || 'Fair'] || 4;
+  // 3. Urgency factor (1-10 mapped to 0.1 to 1.0)
+  const urgValue = Math.min(Math.max(task.urgency ?? 5, 1), 10);
+  const urgNormalized = urgValue / 10;
 
-  const rawScore = criticalityWeight + safetyRiskScore + urgencyScore + operationalScore + overdueScore + conditionScore;
-  const riskScore = Math.min(Math.max(Math.round(rawScore), 10), 99);
+  // 4. Overdue factor (0.0 if not overdue, scales up to 1.0 with days overdue)
+  const overdueDays = Math.max(task.daysOverdue ?? 0, 0);
+  const overdueNormalized = overdueDays > 0 ? Math.min(0.4 + overdueDays * 0.15, 1.0) : 0.0;
 
+  // 5. Asset Impact factor (operational impact 1-10 mapped to 0.1 to 1.0)
+  const impactValue = Math.min(Math.max(task.operationalImpact ?? 5, 1), 10);
+  const impactNormalized = impactValue / 10;
+
+  // Weighted formula
+  const critPart = Number((critNormalized * weights.criticalityWeight).toFixed(1));
+  const sevPart = Number((sevNormalized * weights.severityWeight).toFixed(1));
+  const urgPart = Number((urgNormalized * weights.urgencyWeight).toFixed(1));
+  const overduePart = Number((overdueNormalized * weights.overdueWeight).toFixed(1));
+  const impactPart = Number((impactNormalized * weights.assetImpactWeight).toFixed(1));
+
+  const totalRaw = Math.round(critPart + sevPart + urgPart + overduePart + impactPart);
+  const riskScore = Math.min(Math.max(totalRaw, 0), 100);
+
+  // PRD Categories: 90–100 Critical; 70–89 High; 40–69 Medium; 0–39 Low
   let priority: PriorityLevel = 'Low';
-  if (riskScore >= 85 || overdue >= 7 || task.criticality === 'Critical') {
+  if (riskScore >= 90) {
     priority = 'Critical';
-  } else if (riskScore >= 70 || overdue >= 3) {
+  } else if (riskScore >= 70) {
     priority = 'High';
-  } else if (riskScore >= 45) {
+  } else if (riskScore >= 40) {
     priority = 'Medium';
   } else {
     priority = 'Low';
   }
 
-  // Generate explainable AI justification
-  const reasons: string[] = [];
-  if (overdue > 0) {
-    reasons.push(`${overdue} day${overdue > 1 ? 's' : ''} overdue`);
-  }
-  if ((task.safetyRisk || 0) >= 8) {
-    reasons.push(`high safety risk (${task.safetyRisk}/10)`);
-  }
-  if (task.criticality === 'Critical') {
-    reasons.push('classified as Critical railway infrastructure');
-  }
-  if (task.assetCondition === 'Critical' || task.assetCondition === 'Poor') {
-    reasons.push(`asset condition is ${task.assetCondition.toLowerCase()}`);
-  }
-  if ((task.operationalImpact || 0) >= 8) {
-    reasons.push('causes significant operational train delay risk');
+  // PRD Human-readable explanation generator:
+  // e.g., "High asset criticality + severe defect + overdue maintenance + significant operational impact"
+  const descriptors: string[] = [];
+
+  if (critNormalized >= 0.75) {
+    descriptors.push('High asset criticality');
+  } else if (critNormalized >= 0.45) {
+    descriptors.push('Moderate asset criticality');
   }
 
-  const rationale = reasons.length > 0
-    ? `${priority} priority determined because this task is ${reasons.join(', ')}.`
-    : `${priority} priority assigned based on standard routine preventive schedule and baseline parameters.`;
+  if (sevNormalized >= 0.75) {
+    descriptors.push('severe defect');
+  } else if (sevNormalized >= 0.45) {
+    descriptors.push('standard wear & tear');
+  }
+
+  if (overdueDays > 0) {
+    descriptors.push(`${overdueDays}d overdue maintenance`);
+  }
+
+  if (urgNormalized >= 0.7) {
+    descriptors.push('high urgency');
+  }
+
+  if (impactNormalized >= 0.7) {
+    descriptors.push('significant operational impact');
+  }
+
+  const explanation = descriptors.length > 0
+    ? descriptors.join(' + ')
+    : 'Standard routine preventive maintenance schedule';
 
   return {
     riskScore,
     priority,
-    explanation: rationale
+    explanation,
+    formulaBreakdown: {
+      criticalityContribution: critPart,
+      severityContribution: sevPart,
+      urgencyContribution: urgPart,
+      overdueContribution: overduePart,
+      assetImpactContribution: impactPart,
+      total: riskScore
+    }
   };
 }
+

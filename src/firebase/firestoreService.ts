@@ -9,7 +9,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './config';
-import { MaintenanceTask, Train, BlockWindow, BlockPlan, Asset, AiRecommendation } from '../types';
+import { MaintenanceTask, Train, BlockWindow, BlockPlan, BlockPlanStatus, Asset, AiRecommendation } from '../types';
 import {
   INITIAL_TASKS,
   INITIAL_TRAINS,
@@ -209,6 +209,10 @@ export const firestoreService = {
     }
   },
 
+  async createTask(task: MaintenanceTask): Promise<void> {
+    return this.addTask(task);
+  },
+
   async updateTask(taskId: string, updates: Partial<MaintenanceTask>): Promise<void> {
     try {
       await updateDoc(doc(db, TASKS_COLL, taskId), updates);
@@ -250,6 +254,75 @@ export const firestoreService = {
   async updateBlockPlan(planId: string, updates: Partial<BlockPlan>): Promise<void> {
     try {
       await updateDoc(doc(db, PLANS_COLL, planId), updates);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `${PLANS_COLL}/${planId}`);
+    }
+  },
+
+  /**
+   * PRD Section 22 - Human Approval Workflow
+   * Every plan is marked AI RECOMMENDED until reviewed.
+   * Action: Approve Plan -> status becomes APPROVED
+   */
+  async approveBlockPlan(planId: string, approverName: string = 'K. S. Sharma (Sr. DOM)'): Promise<void> {
+    try {
+      const updates: Partial<BlockPlan> = {
+        status: 'APPROVED' as BlockPlanStatus,
+        approvedBy: approverName,
+        approvalTimestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      };
+      await setDoc(doc(db, PLANS_COLL, planId), updates, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `${PLANS_COLL}/${planId}`);
+    }
+  },
+
+  /**
+   * PRD Section 22 - Human Approval Workflow
+   * Action: Modify Plan -> status becomes MODIFIED with updated timing or tasks
+   */
+  async modifyBlockPlan(
+    planId: string,
+    modifications: {
+      startTime?: string;
+      endTime?: string;
+      taskIds?: string[];
+      modificationNotes?: string;
+    },
+    reason?: string,
+    approverName?: string
+  ): Promise<void> {
+    try {
+      const updates: Partial<BlockPlan> = {
+        ...modifications,
+        status: 'MODIFIED' as BlockPlanStatus,
+        modificationNotes: reason || modifications.modificationNotes,
+        approvedBy: approverName || 'K. S. Sharma (Sr. DOM)',
+        approvalTimestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      };
+      await setDoc(doc(db, PLANS_COLL, planId), updates, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `${PLANS_COLL}/${planId}`);
+    }
+  },
+
+  /**
+   * PRD Section 22 - Human Approval Workflow
+   * Action: Reject Plan -> status becomes REJECTED with mandatory reason
+   */
+  async rejectBlockPlan(
+    planId: string,
+    reason: string,
+    approverName?: string
+  ): Promise<void> {
+    try {
+      const updates: Partial<BlockPlan> = {
+        status: 'REJECTED' as BlockPlanStatus,
+        rejectionReason: reason,
+        approvedBy: approverName || 'K. S. Sharma (Sr. DOM)',
+        approvalTimestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      };
+      await setDoc(doc(db, PLANS_COLL, planId), updates, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `${PLANS_COLL}/${planId}`);
     }

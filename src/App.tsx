@@ -11,10 +11,12 @@ import { INITIAL_SECTIONS } from './data/simulatedData';
 
 import { Header } from './components/Header';
 import { Sidebar, ActiveTab } from './components/Sidebar';
+import { HackathonDemoGuide } from './components/HackathonDemoGuide';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MaintenanceTasksPage } from './pages/MaintenanceTasksPage';
 import { BlockPlannerPage } from './pages/BlockPlannerPage';
+import { MapPage } from './pages/MapPage';
 import { AiRecommendationsPage } from './pages/AiRecommendationsPage';
 import { WhatIfSimulationPage } from './pages/WhatIfSimulationPage';
 import { PlanningCalendarPage } from './pages/PlanningCalendarPage';
@@ -32,7 +34,7 @@ export default function App() {
   const [trains, setTrains] = useState<Train[]>([]);
   const [windows, setWindows] = useState<BlockWindow[]>([]);
   const [plans, setPlans] = useState<BlockPlan[]>([]);
-  const [, setAssets] = useState<Asset[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [recommendations, setRecommendations] = useState<AiRecommendation[]>([]);
 
   // 1. Auth Listener
@@ -126,6 +128,15 @@ export default function App() {
         isSeeding={isSeeding}
       />
 
+      {/* SIH 2026 9-Step Hackathon Demo Walkthrough Guide */}
+      <HackathonDemoGuide
+        activeTab={activeTab}
+        onNavigate={(tab, section) => {
+          if (section) setSelectedPlannerSection(section);
+          setActiveTab(tab);
+        }}
+      />
+
       {/* Main Layout: Sidebar + Active View */}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -147,7 +158,13 @@ export default function App() {
           )}
 
           {activeTab === 'tasks' && (
-            <MaintenanceTasksPage tasks={tasks} />
+            <MaintenanceTasksPage
+              tasks={tasks}
+              onNavigateToOptimizer={(sec) => {
+                setSelectedPlannerSection(sec);
+                setActiveTab('planner');
+              }}
+            />
           )}
 
           {activeTab === 'planner' && (
@@ -157,6 +174,18 @@ export default function App() {
               windows={windows}
               plans={plans}
               initialSection={selectedPlannerSection}
+            />
+          )}
+
+          {activeTab === 'map' && (
+            <MapPage
+              assets={assets}
+              sections={INITIAL_SECTIONS}
+              tasks={tasks}
+              onSelectSectionForPlanner={(sec) => {
+                setSelectedPlannerSection(sec);
+                setActiveTab('planner');
+              }}
             />
           )}
 
